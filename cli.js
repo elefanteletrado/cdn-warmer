@@ -3,7 +3,7 @@
 'use strict';
 
 const Table = require('cli-table');
-const Warmer = require('./warmer.js');
+const Warmer = require('./index.js');
 const colors = require('colors');
 const dateformat = require('dateformat');
 const fs = require('fs');

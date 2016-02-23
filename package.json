@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "bin": "./cli.js",
   "description": "",
-  "main": "warmer.js",
+  "main": "index.js",
   "engines": {
-    "node": ">=4.0.0" 
+    "node": ">=4.0.0"
   },
   "scripts": {
     "test": "mocha"
