@@ -1,6 +1,9 @@
 # cdn-warmer
 > A CLI tool to pre-warm your CloudFront CDN.
 
+## Requirements
+* node.js >= 4.0.0
+
 ## Setup
 ```sh
 $ git clone https://github.com/elefanteletrado/cdn-warmer.git && cd cdn-warmer
