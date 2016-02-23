@@ -1,0 +1,32 @@
+{
+  "name": "cdn-warmer",
+  "version": "1.0.0",
+  "bin": "./cli.js",
+  "description": "",
+  "main": "warmer.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elefanteletrado/cdn-warmer.git"
+  },
+  "author": "Pablo Oliveira <pablo.oliveira@hushmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "cli-table": "^0.3.1",
+    "colors": "^1.1.2",
+    "commander": "^2.9.0",
+    "dateformat": "^1.0.12",
+    "file": "^0.2.2",
+    "merge": "^1.2.0",
+    "perfy": "^1.1.0",
+    "progress": "^1.1.8",
+    "q": "^1.4.1",
+    "request": "^2.69.0",
+    "walk": "^2.3.9"
+  },
+  "devDependencies": {
+    "mocha": "^2.4.5"
+  }
+}

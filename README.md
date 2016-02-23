@@ -1,0 +1,4 @@
+# cdn-warmer
+
+## License
+MIT
