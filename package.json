@@ -4,6 +4,9 @@
   "bin": "./cli.js",
   "description": "",
   "main": "warmer.js",
+  "engines": {
+    "node": ">=4.0.0" 
+  },
   "scripts": {
     "test": "mocha"
   },
