@@ -1,40 +1,32 @@
 'use strict';
 
-const File = require('./file.js');
-const ProgressBar = require('progress');
+const _ = require('lodash');
 const Report = require('./report.js');
 const Q = require('q');
 const colors = require('colors');
-const path = require('path');
-const perfy = require('perfy');
-const request = require('request');
-const url = require('url');
+const merge = require('merge');
+const http = require('./http.js');
 const util = require('./util.js');
 const walker = require('./walker');
 
-let report = null;
+//let report = null;
 
 class Warmer {
-  constructor(cdnPrefix, baseDirectory) {
+  constructor(cdnPrefix, baseDirectory, options) {
+    let defaults = {
+      chunkSize: 200
+    };
+
     this.cdnPrefix = cdnPrefix;
     this.baseDirectory = baseDirectory;
+    options = options || {};
+    this.options = merge(defaults, options);
   }
-
-  /**
-   * Builds the file URL using its name and the provided CDN prefix.
-   */
-  buildFileUrl(cdnPrefix, file) {
-    let baseDirName = path.parse(process.cwd()).base;
-    let index = file.indexOf(baseDirName);
-    let filePath = file.substr(index);
-
-    return url.resolve(cdnPrefix, filePath);
-  };
 
   warm(callback) {
     util.log(`Looking for files on ${this.baseDirectory.white.bold}...`);
 
-    report = new Report();
+    let report = new Report();
     report.cdn = this.cdnPrefix;
     report.baseDirectory = this.baseDirectory;
     report.start();
@@ -42,109 +34,103 @@ class Warmer {
     // Get all files from base directory recursively
     walker.walk(this.baseDirectory)
       .then((files) => {
+        let deferred = Q.defer();
+        let results = [];
+
         util.log(`${files.length} files found.`);
         util.log(`Warming up CDN at ${this.cdnPrefix.bold}...`);
 
-        let url = null;
-        let promise = null;
-        let promises = [];
+        // Setup progress bar
+        let barTemplate = 'Getting files [:bar] :percent (:current/:total)';
+        let progressBar = util.progressBar(barTemplate, files.length);
 
-        let bar = null;
-
-        if (process.env.verbose == 'true') {
-          let barTemplate =
-            'Getting files [:bar] :percent (:current/:total)';
-
-          let barOptions = {
-            complete: '=',
-            incomplete: ' ',
-            width: 20,
-            total: files.length
-          };
-
-          bar = new ProgressBar(barTemplate, barOptions);
-        }
-
-        files.forEach((file) => {
-          url = this.buildFileUrl(this.cdnPrefix, file);
-          promise = this.getFile(url);
-
-          promise.then((file) => {
-            if (bar) {
-              bar.tick();
-            }
-
-            // Check if it was a hit or miss on CDN
-            let isHit = file.cache === 'Hit from cloudfront';
-
-            // Increase counter for hits/misses
-            isHit ? report.hit() : report.miss();
-          });
-
-          promises.push(promise);
+        // Build URL list
+        let urls = files.map((file) => {
+          return http.buildFileUrl(this.cdnPrefix, file);
         });
 
-        return Q.allSettled(promises);
+        // Break up URLs into chunks
+        let chunks = _.chunk(urls, this.options.chunkSize);
+        let chunk = chunks.pop();
+
+        // Callback executed when a file is downloaded. Updates the progress bar
+        // and accounts the hits or misses
+        let onFileCallback = onFile(report, progressBar);
+
+        // This callback is executed when a chunk of URLs are finished. It will
+        // keep firing up getFiles until no URLs are left
+        let onChunkCallback = onChunk(results, chunks, deferred, onFileCallback);
+
+        http.get(chunk, onFileCallback).then(onChunkCallback);
+
+        return deferred.promise;
       })
-      .then((results) => {
-        report.end();
-
-        results.forEach((result) => {
-          report.files.push(result.value);
-
-          if (result.value.error) {
-            report.error(result.value.error);
-          }
-        });
-
-        if (typeof callback === 'function') {
-          callback(null, report);
-        }
-      }, (error) => {
-        report.error = error;
-        report.end();
-
-        if (typeof callback === 'function') {
-          callback(error, report);
-        }
-      });
+      .then(onSuccess(report, callback), onError(report, callback));
   }
+}
 
-  /**
-   * Performs a HTTP GET request on the given URL.
-   * @returns {Object} Returns a promise.
-   */
-  getFile(url) {
-    let deferred = Q.defer();
+const onFile = (report, progressBar) => {
+  return (file) => {
+    if (progressBar) {
+      progressBar.tick();
+    }
 
-    let options = {
-      url: url,
-      headers: {
-        'User-Agent': 'cdn-warmer'
-      }
-    };
+    // Check if it was a hit or miss on CDN
+    let isHit = file.cache === 'Hit from cloudfront';
 
-    perfy.start(url);
-
-    request(options, (error, response, body) => {
-      let file = new File(url);
-
-      // Set file status
-      file.status = response.statusCode; // HTTP status code
-      file.time = perfy.end(url).time; // in seconds
-
-      if (error) {
-        file.error = error;
-      } else {
-        file.cache = response.headers['x-cache']; // Hit or miss
-        file.size = util.getSizeOf(body); // File size in bytes
-      }
-
-      deferred.resolve(file);
-    });
-
-    return deferred.promise;
+    // Increase counter for hits/misses
+    isHit ? report.hit() : report.miss();
   };
 }
+
+const onChunk = (results, chunks, deferred, onFile) => {
+  return (result) => {
+    result = result.map((item) => {
+      return item.value;
+    });
+
+    results = results.concat(result);
+
+    // Check if there is still work to do
+    if (chunks.length > 0) {
+      let chunk = chunks.pop();
+
+      http.get(chunk, onFile)
+        .then(onChunk(results, chunks, deferred, onFile));
+    } else {
+      deferred.resolve(results);
+    }
+  };
+};
+
+const onSuccess = (report, callback) => {
+  return (results) => {
+    report.end();
+
+    // Append results to report
+    results.forEach((result) => {
+      report.files.push(result);
+
+      if (result.error) {
+        report.error(result.error);
+      }
+    });
+
+    if (typeof callback === 'function') {
+      callback(null, report);
+    }
+  };
+};
+
+const onError = (report, callback) => {
+  return (error) => {
+    report.error = error;
+    report.end();
+
+    if (typeof callback === 'function') {
+      callback(error, report);
+    }
+  };
+};
 
 module.exports = Warmer;
