@@ -20,7 +20,13 @@ program
     // Set verbosity
     process.env.verbose = !!program.verbose;
 
-    let warmer = new Warmer(cdnPrefix, baseDirectory);
+    let options = {};
+
+    if (program.chunk) {
+      options.chunkSize = program.chunk;
+    }
+
+    let warmer = new Warmer(cdnPrefix, baseDirectory, options);
 
     warmer.warm((error, report) => {
       if (error) {
@@ -29,7 +35,7 @@ program
         return;
       }
 
-      if (program.log) {
+      if (program.report) {
         saveReport(report, (error) => {
           if (error) {
             console.error(error);
@@ -43,7 +49,8 @@ program
     })
   })
   .option('-v, --verbose', 'Set verbosity')
-  .option('-l, --log', 'Save a log in JSON format')
+  .option('-c, --chunk [size]', 'Number of files to be downloaded simultaneously')
+  .option('-r, --report', 'Save a report in JSON format')
   .parse(process.argv);
 
 const printReport = (report) => {
