@@ -19,8 +19,9 @@ $ cdn-warmer <your CDN address> [options]
 ```
 
 ### Options
-* `-l, --log`: save a report with file status and hit/miss rates
-* `-v, --verbose`: set verbosity
+* `-c, --chunk`: Chunk size. Represents how many files will be downloaded in parallel
+* `-r, --report`: Save a report with file status and hit/miss rates
+* `-v, --verbose`: Set verbosity
 
 ### Example
 ```sh
