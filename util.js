@@ -1,6 +1,7 @@
 'use strict';
 
 const ProgressBar = require('progress');
+const spinner = require('simple-spinner');
 
 module.exports.getSizeOf = (value) => {
   if (typeof value === 'string') {
@@ -11,7 +12,7 @@ module.exports.getSizeOf = (value) => {
 };
 
 module.exports.log = (text, ignoreVerbosity) => {
-  if (process.env.verbose === 'true' || ignoreVerbosity === true) {
+  if (isVerbose() || ignoreVerbosity === true) {
     console.log(text);
   }
 };
@@ -30,7 +31,7 @@ module.exports.progressBar = (template, total, length) => {
   length = length || 20;
   let bar;
 
-  if (process.env.verbose == 'true') {
+  if (isVerbose()) {
     let barTemplate = template;
 
     let barOptions = {
@@ -45,3 +46,20 @@ module.exports.progressBar = (template, total, length) => {
 
   return bar;
 };
+
+module.exports.spinner = {
+  start: () => {
+    if (isVerbose()) {
+      spinner.start();
+    }
+  },
+  stop: () => {
+    if (isVerbose()) {
+      spinner.stop();
+    }
+  }
+};
+
+const isVerbose = () => {
+  return process.env.verbose == 'true';
+}
