@@ -13,9 +13,17 @@ const DATE_FORMAT = 'yyyy/mm/dd hh:MM:ss'
 
 program
   .version('1.0.0')
-  .arguments('<cdnPrefix>')
-  .action((cdnPrefix) => {
-    let baseDirectory = process.cwd();
+  .arguments('<cdn> <bucket> [prefix]')
+  .action((cdn, bucket, prefix) => {
+    prefix = prefix || '/';
+
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+      throw new Error('AWS_ACCESS_KEY_ID not defined');
+    }
+
+    if (!process.env.SECRET_ACCESS_KEY) {
+      throw new Error('SECRET_ACCESS_KEY not defined');
+    }
 
     // Set verbosity
     process.env.verbose = !!program.verbose;
@@ -26,7 +34,7 @@ program
       options.chunkSize = program.chunk;
     }
 
-    let warmer = new Warmer(cdnPrefix, baseDirectory, options);
+    let warmer = new Warmer(cdn, bucket, prefix, options);
 
     warmer.warm((error, report) => {
       if (error) {
@@ -46,10 +54,10 @@ program
       if (process.env.verbose) {
         printReport(report);
       }
-    })
+    });
   })
-  .option('-v, --verbose', 'Set verbosity')
   .option('-c, --chunk [size]', 'Number of files to be downloaded simultaneously')
+  .option('-v, --verbose', 'Set verbosity')
   .option('-r, --report', 'Save a report in JSON format')
   .parse(process.argv);
 

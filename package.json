@@ -17,6 +17,7 @@
   "author": "Pablo Oliveira <pablo.oliveira@hushmail.com>",
   "license": "MIT",
   "dependencies": {
+    "aws-sdk": "^2.2.38",
     "cli-table": "^0.3.1",
     "colors": "^1.1.2",
     "commander": "^2.9.0",
@@ -28,7 +29,7 @@
     "progress": "^1.1.8",
     "q": "^1.4.1",
     "request": "^2.69.0",
-    "walk": "^2.3.9"
+    "simple-spinner": "0.0.5"
   },
   "devDependencies": {
     "chai": "^3.5.0",

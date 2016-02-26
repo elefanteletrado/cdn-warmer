@@ -8,37 +8,43 @@ const merge = require('merge');
 const http = require('./http.js');
 const util = require('./util.js');
 const walker = require('./walker');
-
-//let report = null;
+const url = require('url');
 
 class Warmer {
-  constructor(cdnPrefix, baseDirectory, options) {
+  constructor(cdn, bucket, prefix, options) {
     let defaults = {
       chunkSize: 200
     };
 
-    this.cdnPrefix = cdnPrefix;
-    this.baseDirectory = baseDirectory;
+    this.cdn = cdn;
+    this.bucket = bucket;
+    this.prefix = prefix;
+
     options = options || {};
     this.options = merge(defaults, options);
   }
 
   warm(callback) {
-    util.log(`Looking for files on ${this.baseDirectory.white.bold}...`);
+    util.log(`Looking for files on ${this.bucket.white.bold}...`);
 
     let report = new Report();
-    report.cdn = this.cdnPrefix;
-    report.baseDirectory = this.baseDirectory;
+    report.cdn = this.cdn;
+    report.bucket = this.bucket;
+    report.prefix = this.prefix;
     report.start();
 
+    util.spinner.start();
+
     // Get all files from base directory recursively
-    walker.walk(this.baseDirectory)
+    walker.walk(this.bucket, this.prefix)
       .then((files) => {
+        util.spinner.stop();
+        
         let deferred = Q.defer();
         let results = [];
 
         util.log(`${files.length} files found.`);
-        util.log(`Warming up CDN at ${this.cdnPrefix.bold}...`);
+        util.log(`Warming up CDN at ${this.cdn.bold}...`);
 
         // Setup progress bar
         let barTemplate = 'Getting files [:bar] :percent (:current/:total)';
@@ -46,7 +52,7 @@ class Warmer {
 
         // Build URL list
         let urls = files.map((file) => {
-          return http.buildFileUrl(this.cdnPrefix, file);
+          return url.resolve(this.cdn, file);
         });
 
         // Break up URLs into chunks
@@ -58,7 +64,7 @@ class Warmer {
         let onFileCallback = onFile(report, progressBar);
 
         // This callback is executed when a chunk of URLs are finished. It will
-        // keep firing up getFiles until no URLs are left
+        // keep firing up http.get until no chunks are left
         let onChunkCallback = onChunk(results, chunks, deferred, onFileCallback);
 
         http.get(chunk, onFileCallback).then(onChunkCallback);

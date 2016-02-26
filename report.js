@@ -4,7 +4,8 @@ const util = require('./util.js');
 
 class Report {
   constructor() {
-    this.baseDirectory = null;
+    this.bucket = null;
+    this.prefix = null;
     this.started = null;
     this.ended = null;
     this.errors = [];
